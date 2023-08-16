@@ -1,4 +1,4 @@
-package br.org.curitiba.ici.saude.saude;
+package br.org.curitiba.ici.saude;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
