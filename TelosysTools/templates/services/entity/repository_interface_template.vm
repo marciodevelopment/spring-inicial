@@ -1,0 +1,75 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+import java.util.*;
+import org.springframework.data.*;
+import java.io.Serializable;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import br.org.curitiba.ici.saude.common.*;
+import ${ROOT_PKG}.*;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.repository.*;
+
+#if (!$entity.hasTag('path'))
+#cancel("No class for generate")
+#end
+
+#set($updateAttributes = [])
+#set($existsSearch = false)
+
+#foreach ($attribute in $entity.nonKeyAttributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('pesquisa'))
+     #set($existsSearch = true)
+    #end
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('put'))
+      #if ($updateAttributes.add($attribute))
+      #end
+    #end
+#end
+##macro colunas
+#set($searchAttributes = [])
+#foreach ($attribute in $entity.attributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('pesquisa'))
+      #if ($searchAttributes.add($attribute))
+      #end
+    #end
+#end
+#macro(columnsSearch)
+#foreach ($attribute in $searchAttributes)
+e.$attribute.name#if(!$foreach.last), #end
+#end
+#end
+##macro filtro
+#macro(filterSearch)
+#foreach ($attribute in $searchAttributes)
+and e.$attribute.name = :$attribute.name
+#end
+#end
+
+public interface ${entity.name}Repository
+    extends JpaRepository<${entity.name}Entity, Integer>#if($existsSearch), SearchRepository<${entity.name}PesquisaView>#end {
+#if ($existsSearch)
+  @QuerySearch(columns = "#columnsSearch", query = """
+        from ${entity.name}Entity e
+        where  1 = 1
+      #foreach ($attribute in $searchAttributes)
+  and e.$attribute.name = :$attribute.name
+      #end
+      """, viewResult = ${entity.name}PesquisaView.class)
+  @Override
+  public Page<${entity.name}PesquisaView> search(Map<String, Object> parameters, Pageable pageable);
+
+#end
+#if($entity.hasTag('tenancy'))
+  @Override
+  @Query(value = """
+          select e
+          from ${entity.name} e
+          where e.cd$entity.name = ?1
+      """)
+  public Optional<${entity.name}Entity> findById(Integer cd${entity.name});
+#end
+}

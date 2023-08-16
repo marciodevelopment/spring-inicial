@@ -1,0 +1,38 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import jakarta.persistence.*;
+import jakarta.validation.*;
+import br.org.curitiba.ici.saude.common.*;
+import ${ROOT_PKG}.*;
+
+#set($searchAttributes = [])
+#foreach ($attribute in $entity.nonKeyAttributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('pesquisa'))
+      #if ($searchAttributes.add($attribute))
+      #end
+    #end
+#end
+#set($Q = '"')
+#if ( $searchAttributes.isEmpty())
+#cancel("No class for generate")
+#end
+@NoArgsConstructor
+@Setter
+@Getter
+public class ${entity.name}PesquisaRequest extends ParametrosPesquisaRequest {
+#foreach( $attribute in $searchAttributes )
+#if	( $attribute.hasTag('typeValues') )
+  private $attribute.name.replace('id', '')Type $attribute.name; 
+#else
+  private $attribute.formattedWrapperType(10) $attribute.name #if($attribute.hasInitialValue())= ${attribute.ini} #end;
+#end
+#end	
+
+}

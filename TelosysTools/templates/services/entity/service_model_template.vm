@@ -1,0 +1,88 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import java.util.Map;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+
+
+import java.util.Collections;
+import java.util.List;
+
+import jakarta.persistence.*;
+import jakarta.validation.*;
+import br.org.curitiba.ici.saude.common.*;
+import ${ROOT_PKG}.*;
+
+#if (!$entity.hasTag('path'))
+#cancel("No class for generate")
+#end
+
+#set($variableName = $entity.name.substring(0,1).toLowerCase() + $entity.name.substring(1))
+#set($existsPost = false)
+#set($existsPut = false)
+#set($existsSearch = false)
+#set($existsDelete = false)
+#set($existsGet = false)
+
+#foreach ($attribute in $entity.nonKeyAttributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('post'))
+     #set($existsPost = true)
+    #end
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('put'))
+     #set($existsPut = true)
+    #end
+	#if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('pesquisa'))
+     #set($existsSearch = true)
+    #end
+	#if ($entity.hasTag('delete'))
+     #set($existsDelete = true)
+    #end
+	#if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('get'))
+     #set($existsGet = true)
+    #end
+#end
+
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Service
+public class ${entity.name}Service {
+  private final ${entity.name}Repository ${variableName}Repository;
+
+#if($existsPost || $existsPut)
+  @Transactional
+  public ${entity.name}Entity salvar(${entity.name}Entity ${variableName}) {
+    return ${variableName}Repository.save(${variableName});
+  }
+
+#end  
+#if($existsDelete)
+  @Transactional
+  public void deletarPorId(Integer ${entity.keyAttribute.name}) {
+    ${variableName}Repository.deleteById(${entity.keyAttribute.name});
+  }
+
+#end  
+#if($existsGet)
+  public ${entity.name}Entity buscarPorIdOuThrow(Integer ${entity.keyAttribute.name}) {
+    return ${variableName}Repository.findById(${entity.keyAttribute.name}).orElseThrow(() -> new EntityNotFoundException(
+        "${entity.name} não encontrado para o código enviado %s".formatted(${entity.keyAttribute.name})));
+  }
+
+#end
+#if($existsSearch)  
+  public Page<${entity.name}PesquisaView> pesquisarView(Pageable pageable,
+      Map<String, Object> parametros) {
+    return ${variableName}Repository.search(parametros, pageable);
+  }
+
+#end  
+}
+

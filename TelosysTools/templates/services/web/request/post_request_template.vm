@@ -1,0 +1,45 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import jakarta.persistence.*;
+import jakarta.validation.*;
+import br.org.curitiba.ici.saude.common.*;
+import jakarta.validation.constraints.*;
+import ${ROOT_PKG}.*;
+#set($postAttributes = [])
+#foreach ($attribute in $entity.nonKeyAttributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('post'))
+      #if ($postAttributes.add($attribute))
+      #end
+    #end
+#end
+#set($Q = '"')
+#if ( $postAttributes.isEmpty())
+#cancel("No class for generate")
+#end
+@NoArgsConstructor
+@Setter
+@Data
+public class ${entity.name}NovoRequest {
+#foreach( $attribute in $postAttributes )
+#if	( $attribute.hasTag('web') )
+#set($message = "${attribute.tagValue('mensagem')}")
+#if ( $beanValidation.annotationsForWrapperType(0, $attribute ).contains(')') )
+$beanValidation.annotationsForWrapperType( 2, $attribute ).replace(')', ", message=$Q$message$Q)")
+#elseif (!$beanValidation.annotationsForWrapperType(0, $attribute ).equals(''))
+$beanValidation.annotationsForWrapperType( 2, $attribute )(message=$Q$message$Q)
+#end
+#if	( $attribute.hasTag('typeValues') )
+  private $attribute.name.replace('id', '')Type $attribute.name; 
+#else
+  private $attribute.formattedWrapperType(10) $attribute.name #if($attribute.hasInitialValue())= ${attribute.ini} #end;
+#end
+#end
+#end	
+
+}

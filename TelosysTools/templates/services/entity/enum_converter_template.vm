@@ -1,0 +1,25 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+
+import jakarta.persistence.AttributeConverter;
+
+#set($converterName = $target.file.replace('.java', ''))
+#set($attributeName = $target.file.replace('Converter.java', ''))
+
+public class ${converterName} implements AttributeConverter<${attributeName}Type, Integer> {
+
+  @Override
+  public Integer convertToDatabaseColumn(${attributeName}Type type) {
+    if (type == null)
+      return null;
+    return type.getId();
+  }
+
+  @Override
+  public ${attributeName}Type convertToEntityAttribute(Integer id) {
+    return ${attributeName}Type.toType(id);
+  }
+}

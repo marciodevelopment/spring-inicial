@@ -1,0 +1,139 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+#if (!$entity.hasTag('path'))
+  #cancel("No Controller class")
+#end
+
+#set($path = '')
+#set($variableName = $entity.name.substring(0,1).toLowerCase() + $entity.name.substring(1))
+#set($existsPost = false)
+#set($existsPut = false)
+#set($existsSearch = false)
+#set($existsDelete = false)
+#set($existsGet = false)
+
+#if ($entity.hasTag('path'))
+  #set($path = $entity.tagValue('path'))
+#end
+
+#foreach ($attribute in $entity.nonKeyAttributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('post'))
+     #set($existsPost = true)
+    #end
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('put'))
+     #set($existsPut = true)
+    #end
+	#if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('pesquisa'))
+     #set($existsSearch = true)
+    #end
+	#if ($entity.hasTag('delete'))
+     #set($existsDelete = true)
+    #end
+	#if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('get'))
+     #set($existsGet = true)
+    #end
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.List;
+import org.instancio.Instancio;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.ActiveProfiles;
+import${ROOT_PKG}.${PROJECT_NAME}Application;
+import ${ENTITY_PKG}.entity.view.${entity.name}PesquisaView;
+import ${ENTITY_PKG}.rest.web.request.${entity.name}AtualizacaoRequest;
+import ${ENTITY_PKG}.rest.web.request.${entity.name}NovoRequest;
+import ${ENTITY_PKG}.rest.web.response.${entity.name}Response;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+
+
+@TestMethodOrder(OrderAnnotation.class)
+@ActiveProfiles("test")
+@SpringBootTest(classes = ${PROJECT_NAME}Application.class,
+    webEnvironment = WebEnvironment.RANDOM_PORT)
+class ${entity.name}ControllerIntegarionTest {
+  @LocalServerPort
+  private int port;
+
+  private String url = "http://localhost:%s/$path";
+  private static Integer cd${entity.name}Criado = null;
+
+  @BeforeEach
+  void beforeEach() {
+    url = String.format(url, port);
+  }
+
+#if ($existsPost)
+  @Order(1)
+  @Test
+  void deveSalvarUmNovo${entity.name}() throws Exception {
+    ${entity.name}NovoRequest request = Instancio.create(${entity.name}NovoRequest.class);
+
+    Response httpResponse = given().contentType(ContentType.JSON).body(request).when().post(url);
+    httpResponse.then().statusCode(HttpStatus.CREATED.value()).log().ifError();
+
+    cd${entity.name}Criado = httpResponse.getBody().as(Integer.class).intValue();
+
+  }
+#end  
+
+#if ($existsPut)
+  @Order(2)
+  @Test
+  void deveAtualizarUm${entity.name}() throws Exception {
+    ${entity.name}AtualizacaoRequest request = Instancio.create(${entity.name}AtualizacaoRequest.class);
+
+    String urlPut = url + "/" + cd${entity.name}Criado;
+    given().contentType(ContentType.JSON).body(request).when().put(urlPut).then()
+        .statusCode(HttpStatus.OK.value()).log().ifError();
+  }
+#end  
+
+#if ($existsGet)
+  @Order(3)
+  @Test
+  void deveRetornarUm${entity.name}() throws Exception {
+    String urlGet = url + "/" + cd${entity.name}Criado;
+    Response httpResponse = given().contentType(ContentType.JSON).when().get(urlGet);
+    httpResponse.then().statusCode(HttpStatus.OK.value()).log().ifError();
+    ${entity.name}Response fabricanteResponse = httpResponse.getBody().as(${entity.name}Response.class);
+    assertEquals(cd${entity.name}Criado, fabricanteResponse.getCd${entity.name}());
+  }
+#end    
+  
+#if ($existsSearch)
+  @Order(4)
+  @Test
+  void deveEncontrarUma${entity.name}ParaPrimeiraPaginaDeTamanho1() {
+    List<${entity.name}PesquisaView> request =
+        given().contentType(ContentType.JSON).when().queryParam("page", 0).queryParam("size", 1)
+            .get(url).then().extract().jsonPath().get("content");
+    Assertions.assertEquals(1, request.size());
+  }
+#end    
+
+#if ($existsDelete)
+  @Order(5)
+  @Test
+  void deveDeletarUm${entity.name}() throws Exception {
+    String urlDelete = url + "/" + cd${entity.name}Criado;
+    given().contentType(ContentType.JSON).when().delete(urlDelete).then()
+        .statusCode(HttpStatus.OK.value()).log().ifError();
+  }	
+#end
+ 
+}
+

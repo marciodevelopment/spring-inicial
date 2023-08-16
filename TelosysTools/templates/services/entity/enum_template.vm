@@ -1,0 +1,37 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+package ${target.javaPackageFromFolder(${SRC})};
+
+import lombok.Getter;
+import br.org.curitiba.ici.saude.common.*;
+
+#set($enumName = $target.file.replace('.java', ''))
+#set($attributeName = $target.file.replace('Type.java', ''))
+
+#foreach ($attribute in $entity.nonKeyAttributes)
+  #if ($attribute.name.contains($attributeName))
+    #set($enumValues = $attribute.tagValue('typeValues').split('&'))
+  #end
+#end
+
+@Getter
+public enum $enumName {
+#foreach($enumValue in $enumValues)
+  #set($values = $enumValue.split(','))
+  $values[1]($values[0], "$values[2]")#if($foreach.hasNext),
+  #end
+#end;
+
+  private final int id;
+  private final String description;
+
+  private $enumName(int id, String description) {
+    this.id = id;
+    this.description = description;
+  }
+
+  public static $enumName toType(Integer id) {
+    return EnumUtil.toType(id, ${enumName}.class);
+  }
+}

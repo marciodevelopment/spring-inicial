@@ -1,0 +1,111 @@
+#if ($target.outputFileExists())
+#cancel("File exists")
+#end
+#if (!$entity.hasTag('path'))
+  #cancel("No Controller class")
+#end
+
+#set($path = '')
+#set($variableName = $entity.name.substring(0,1).toLowerCase() + $entity.name.substring(1))
+#set($existsPost = false)
+#set($existsPut = false)
+#set($existsSearch = false)
+#set($existsDelete = false)
+#set($existsGet = false)
+
+#if ($entity.hasTag('path'))
+  #set($path = $entity.tagValue('path'))
+#end
+
+#foreach ($attribute in $entity.nonKeyAttributes)
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('post'))
+     #set($existsPost = true)
+    #end
+    #if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('put'))
+     #set($existsPut = true)
+    #end
+	#if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('pesquisa'))
+     #set($existsSearch = true)
+    #end
+	#if ($entity.hasTag('delete'))
+     #set($existsDelete = true)
+    #end
+	#if ($attribute.hasTag('web') && $attribute.tagValue('web').contains('get'))
+     #set($existsGet = true)
+    #end
+#end
+
+package ${target.javaPackageFromFolder(${SRC})};
+
+import ${ROOT_PKG}.entities.${entity.name};
+import ${ROOT_PKG}.service.${entity.name}Service;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+import lombok.*;
+import jakarta.persistence.*;
+import jakarta.validation.*;
+import br.org.curitiba.ici.saude.*;
+import ${ROOT_PKG}.*;
+
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+@RestController
+@RequestMapping("$path")
+public class ${entity.name}Controller {
+  private final ${entity.name}Service ${variableName}Service;
+  private final ${entity.name}Mapper ${variableName}Mapper;
+
+#if ($existsPost)
+  @ResponseStatus(value = HttpStatus.CREATED)
+  @PostMapping
+  public Integer salvar(@RequestBody @Valid ${entity.name}NovoRequest request) {
+    return ${variableName}Service.salvar(${variableName}Mapper.toEntity(request)).getCd${entity.name}();
+  }
+
+#end  
+#if ($existsPut)
+  @PutMapping(path = "/{id}")
+  public void atualizar(@RequestBody @Valid ${entity.name}AtualizacaoRequest request,
+      @NotNull @PathVariable("id") Integer id) {
+    ${variableName}Service.salvar(${variableName}Mapper.toEntity(${variableName}Service.buscarPorIdOuThrow(id), request));
+  }
+
+#end  
+#if ($existsGet)
+  @GetMapping(path = "/{id}")
+  public ${entity.name}Response buscarPorId(@NotNull @PathVariable("id") Integer id) {
+    return ${variableName}Mapper.toResponse(${variableName}Service.buscarPorIdOuThrow(id));
+  }
+
+#end  
+#if ($existsDelete)
+  @DeleteMapping(path = "/{id}")
+  public void deletar(@NotNull @PathVariable("id") Integer id) {
+    ${variableName}Service.deletarPorId(id);
+  }
+
+#end  
+#if ($existsSearch)
+  @GetMapping
+  public PageResponse<${entity.name}PesquisaResponse> pesquisar(${entity.name}PesquisaRequest request,
+      PaginationRequest paginationRequest) {
+    return ${variableName}Mapper.toResponse(
+        ${variableName}Service.pesquisarView(paginationRequest.toPageable(), request.toParametros()));
+  }
+
+#end  
+}
+
